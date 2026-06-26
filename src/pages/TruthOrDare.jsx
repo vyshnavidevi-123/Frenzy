@@ -122,7 +122,7 @@ export default function TruthOrDare() {
 ← Games
 
 </button>
-            <div style={s.bigEmoji}>😈</div>
+            <div style={s.bigEmoji}></div>
             <h1 style={s.title}>Truth or Dare</h1>
             {isHost ? (
               <>
@@ -165,7 +165,7 @@ export default function TruthOrDare() {
           <div style={{ ...s.modeBadge, color: modeInfo.color, border: `1px solid ${modeInfo.color}44` }}>
             {modeInfo.emoji} {modeInfo.label}
           </div>
-          <div style={s.turnBadge}>🎯 {currentPlayer}'s turn</div>
+          <div style={s.turnBadge}> {currentPlayer}'s turn</div>
         </div>
 
         {/* CHOOSING PHASE */}
@@ -177,10 +177,10 @@ export default function TruthOrDare() {
                 <h2 style={s.qTitle}>Your turn — choose wisely</h2>
                 <div style={s.chooseRow}>
                   <button style={{ ...s.choiceBtn, ...s.truthBtn }} onClick={() => chooseType("truth")}>
-                    🗣️ Truth
+                    Truth
                   </button>
                   <button style={{ ...s.choiceBtn, ...s.dareBtn }} onClick={() => chooseType("dare")}>
-                    🔥 Dare
+                    Dare
                   </button>
                 </div>
               </>
@@ -203,7 +203,7 @@ export default function TruthOrDare() {
               background: game.currentType === "truth" ? "rgba(96,165,250,0.08)" : "rgba(248,113,113,0.08)",
             }}>
               <span style={s.promptTag}>
-                {game.currentType === "truth" ? "🗣️ TRUTH" : "🔥 DARE"}
+                {game.currentType === "truth" ? "TRUTH" : "DARE"}
               </span>
               <p style={s.promptText}>{game.currentPrompt}</p>
             </div>
@@ -234,7 +234,7 @@ export default function TruthOrDare() {
               ...s.playerChip,
               ...(name === currentPlayer ? s.playerChipActive : {}),
             }}>
-              {name} · {game.completedCount[name] || 0}🎯
+              {name} · {game.completedCount[name] || 0}
             </div>
           ))}
         </div>
