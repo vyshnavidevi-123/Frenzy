@@ -39,7 +39,7 @@ function Home() {
 
           
           <h1 style={s.title}>
-            Fren<span style={s.titleAccent}>zy</span>
+            Fren<span style={s.titleAccent}>zyyy</span>
           </h1>
           <p style={s.sub}>Play mini games with friends or strangers.</p>
         </div>
