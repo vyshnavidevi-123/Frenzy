@@ -17,34 +17,19 @@ function generateCard() {
   return grid;
 }
 
-// Returns how many of the 7 lines (5 rows + 2 diagonals) are complete.
-// Win condition: all 7 lines complete (= full card) OR alternatively
-// the Indian "full house" = all 5 lines (rows 0-4) + both diagonals = 7 lines.
-// Here we treat "BINGO" as completing all 5 rows + both diagonals = 7 total.
 function countLines(grid, calledSet) {
   let lines = 0;
-
-  // Rows
   for (let r = 0; r < 5; r++) {
     if (grid[r].every((n) => calledSet.has(n))) lines++;
   }
-
-  // Columns
   for (let c = 0; c < 5; c++) {
     if (grid.every((row) => calledSet.has(row[c]))) lines++;
   }
-
-  // Principal diagonal
   if (grid.every((row, i) => calledSet.has(row[i]))) lines++;
-
-  // Secondary diagonal
   if (grid.every((row, i) => calledSet.has(row[4 - i]))) lines++;
-
-  return lines; // max 12
+  return lines;
 }
 
-// A "line" is complete when the row/col/diag is fully marked.
-// We track lines separately to show which ones are done.
 function getLineStatuses(grid, calledSet) {
   const rows = grid.map((row) => row.every((n) => calledSet.has(n)));
   const cols = [0, 1, 2, 3, 4].map((c) => grid.every((row) => calledSet.has(row[c])));
@@ -53,7 +38,6 @@ function getLineStatuses(grid, calledSet) {
   return { rows, cols, diag1, diag2 };
 }
 
-// Check if a cell is on a completed line
 function isCellWinning(ri, ci, lineStatus) {
   return (
     lineStatus.rows[ri] ||
@@ -64,14 +48,14 @@ function isCellWinning(ri, ci, lineStatus) {
 }
 
 const BINGO_LETTERS = ["B", "I", "N", "G", "O"];
-
-// component 
+const LETTER_COLORS = ["#f472b6", "#60a5fa", "#34d399", "#fbbf24", "#a78bfa"];
 
 export default function BingoGame() {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const { playerId, isHost, nickname } = getPlayerSession();
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [roomData, setRoomData] = useState(null);
   const [myCard, setMyCard] = useState(null);
   const [winner, setWinner] = useState(null);
@@ -80,11 +64,17 @@ export default function BingoGame() {
   const [inputNum, setInputNum] = useState("");
   const [inputError, setInputError] = useState("");
   const [callCooldown, setCallCooldown] = useState(false);
-  const isMobile = window.matchMedia("(max-width: 768px)").matches;
 
   const inputRef = useRef(null);
 
-  // listen to room 
+  // Reactive mobile detection
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+
+  // Listen to room
   useEffect(() => {
     if (!roomId) { navigate("/"); return; }
     const unsub = onSnapshot(doc(db, "rooms", roomId), (snap) => {
@@ -93,11 +83,11 @@ export default function BingoGame() {
       setRoomData(data);
 
       const bingo = data.bingo || {};
-if (bingo.winner) {
-  setWinner(bingo.winner);
-} else {
-  setWinner(null);
-}
+      if (bingo.winner) {
+        setWinner(bingo.winner);
+      } else {
+        setWinner(null);
+      }
 
       const called = bingo.calledNumbers || [];
       if (called.length > 0) {
@@ -109,10 +99,9 @@ if (bingo.winner) {
     return () => unsub();
   }, [roomId, navigate]);
 
-  // init / load card
+  // Init / load card
   useEffect(() => {
     if (!roomId || !playerId) return;
-
     async function initCard() {
       const snap = await getDoc(doc(db, "rooms", roomId));
       if (!snap.exists()) return;
@@ -138,11 +127,9 @@ if (bingo.winner) {
         });
       }
     }
-
     initCard();
   }, [roomId, playerId]);
 
-  // ── call a number ──
   async function callNumber() {
     const num = parseInt(inputNum, 10);
     if (isNaN(num) || num < 1 || num > 25) {
@@ -174,13 +161,12 @@ if (bingo.winner) {
     if (e.key === "Enter") callNumber();
   }
 
-  // ── claim bingo ──
   async function claimBingo() {
     if (claimingBingo || winner || !myCard) return;
     const calledNumbers = roomData?.bingo?.calledNumbers || [];
     const calledSet = new Set(calledNumbers);
     const lines = countLines(myCard, calledSet);
-    if (lines < 5) return; // Need all 12 lines (5 rows + 5 cols + 2 diags)
+    if (lines < 5) return;
     setClaimingBingo(true);
     try {
       await updateDoc(doc(db, "rooms", roomId), {
@@ -192,7 +178,6 @@ if (bingo.winner) {
     }
   }
 
-  // ── restart ──
   async function restartGame() {
     await updateDoc(doc(db, "rooms", roomId), {
       "bingo.calledNumbers": [],
@@ -203,7 +188,6 @@ if (bingo.winner) {
     });
     setMyCard(null);
     setWinner(null);
-
     const newCard = generateCard();
     setMyCard(newCard);
     await updateDoc(doc(db, "rooms", roomId), {
@@ -211,14 +195,13 @@ if (bingo.winner) {
     });
   }
 
-    async function goToGames() {
-  await updateDoc(doc(db, "rooms", roomId), {
-    gameStatus: "selecting",
-  });
+  async function goToGames() {
+    await updateDoc(doc(db, "rooms", roomId), { gameStatus: "selecting" });
+    navigate(`/game-select/${roomId}`);
+  }
 
-  navigate(`/game-select/${roomId}`);
-}
-
+  // Cell size based on screen
+  const cellSize = isMobile ? "56px" : "62px";
 
   if (!myCard) {
     return (
@@ -240,11 +223,8 @@ if (bingo.winner) {
   const hasBingo = totalLines >= 5;
   const players = roomData?.players || [];
 
-  // Letter for last called number: B=1-5, I=6-10, N=11-15, G=16-20, O=21-25
   const letterIndex = lastNum ? Math.floor((lastNum - 1) / 5) : null;
   const callerLetter = letterIndex !== null ? BINGO_LETTERS[letterIndex] : null;
-
-  const LETTER_COLORS = ["#f472b6", "#60a5fa", "#34d399", "#fbbf24", "#a78bfa"];
 
   return (
     <div style={s.page}>
@@ -256,89 +236,115 @@ if (bingo.winner) {
         @keyframes winBounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
         @keyframes slideIn { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
         @keyframes markPop { 0%{transform:scale(0.7);opacity:0.3} 60%{transform:scale(1.15)} 100%{transform:scale(1);opacity:1} }
-        @keyframes lineDone{ 0%{box-shadow:none} 50%{box-shadow:0 0 20px rgba(52,211,153,0.7)} 100%{box-shadow:none} }
         .num-input:focus { outline: none; border-color: #a855f7 !important; box-shadow: 0 0 0 3px rgba(168,85,247,0.25); }
         .call-btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
         .call-btn:disabled { opacity: 0.5; cursor: default; }
         .bingo-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
       `}</style>
 
       <div style={s.inner}>
 
         {/* Top bar */}
-        <div style={s.topBar}>
-          <button style={s.backBtn} onClick={goToGames}>← Games </button>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "10px",
+          marginBottom: "16px",
+        }}>
+          <button style={s.backBtn} onClick={goToGames}>← Games</button>
           <div style={s.roomPill}>🎱 {roomData?.roomCode || "------"}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={s.playerPills}>
-              {players.slice(0, 5).map((p) => (
-                <div key={p.playerId} style={{
-                  ...s.avatarPill,
-                  background: p.playerId === playerId
-                    ? "linear-gradient(135deg,#a855f7,#6366f1)"
-                    : "rgba(255,255,255,0.1)",
-                }}>
-                  {p.nickname.charAt(0).toUpperCase()}
-                </div>
-              ))}
-              {players.length > 5 && (
-                <div style={s.avatarPill}>+{players.length - 5}</div>
-              )}
-            </div>
+          <div style={s.playerPills}>
+            {players.slice(0, isMobile ? 3 : 5).map((p) => (
+              <div key={p.playerId} style={{
+                ...s.avatarPill,
+                background: p.playerId === playerId
+                  ? "linear-gradient(135deg,#a855f7,#6366f1)"
+                  : "rgba(255,255,255,0.1)",
+              }}>
+                {p.nickname.charAt(0).toUpperCase()}
+              </div>
+            ))}
+            {players.length > (isMobile ? 3 : 5) && (
+              <div style={s.avatarPill}>+{players.length - (isMobile ? 3 : 5)}</div>
+            )}
           </div>
         </div>
 
         {/* Winner banner */}
         {winner && (
           <div style={{ ...s.winnerBanner, animation: "winBounce 1.5s ease-in-out infinite" }}>
-            <span style={{ fontSize: "36px" }}>🎉</span>
+            <span style={{ fontSize: isMobile ? "24px" : "36px" }}>🎉</span>
             <div style={{ textAlign: "center" }}>
-              <div style={s.winnerTitle}>BINGO!</div>
+              <div style={{ ...s.winnerTitle, fontSize: isMobile ? "24px" : "32px" }}>BINGO!</div>
               <div style={s.winnerSub}>
                 {winner.playerId === playerId ? "🏆 You won!" : `${winner.nickname} won!`}
               </div>
             </div>
-            <span style={{ fontSize: "36px" }}>🎉</span>
+            <span style={{ fontSize: isMobile ? "24px" : "36px" }}>🎉</span>
             {isHost && (
               <button style={s.restartBtn} onClick={restartGame}>Play Again</button>
             )}
           </div>
         )}
 
-        <div style={s.layout}>
+        {/* Main layout: stacked on mobile, side-by-side on desktop */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "auto 1fr",
+          gap: isMobile ? "16px" : "28px",
+          alignItems: "start",
+        }}>
 
           {/* ── LEFT: Bingo Card ── */}
-          <div style={s.cardSection}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             <div style={s.cardTopRow}>
               <span style={s.cardLabelText}>YOUR CARD</span>
               <span style={s.nickBadge}>{nickname}</span>
             </div>
 
             {/* BINGO header letters */}
-            <div style={s.bingoHeader}>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(5, ${cellSize})`,
+              gap: "4px",
+            }}>
               {BINGO_LETTERS.map((l, i) => (
-                <div key={l} style={{ ...s.headerCell, color: LETTER_COLORS[i] }}>
-                  {l}
-                </div>
+                <div key={l} style={{ ...s.headerCell, color: LETTER_COLORS[i] }}>{l}</div>
               ))}
             </div>
 
             {/* Grid */}
-            <div style={s.grid}>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(5, ${cellSize})`,
+              gridTemplateRows: `repeat(5, ${cellSize})`,
+              gap: "4px",
+            }}>
               {myCard.map((row, ri) =>
                 row.map((cell, ci) => {
                   const isMarked = calledSet.has(cell);
                   const isJust = cell === justCalled;
                   const isWinLine = isMarked && isCellWinning(ri, ci, lineStatus);
-                  const letterCol = Math.floor((cell - 1) / 5); // which BINGO letter column
+                  const letterCol = Math.floor((cell - 1) / 5);
 
                   return (
                     <div
                       key={`${ri}-${ci}`}
                       style={{
-                        ...s.cell,
+                        borderRadius: "10px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        position: "relative",
+                        overflow: "hidden",
+                        cursor: "default",
                         background: isWinLine
-                          ? `linear-gradient(135deg, rgba(52,211,153,0.35), rgba(16,185,129,0.25))`
+                          ? "linear-gradient(135deg, rgba(52,211,153,0.35), rgba(16,185,129,0.25))"
                           : isMarked
                             ? "rgba(168,85,247,0.22)"
                             : "rgba(255,255,255,0.04)",
@@ -347,7 +353,7 @@ if (bingo.winner) {
                           : isMarked
                             ? "1.5px solid rgba(168,85,247,0.5)"
                             : "1px solid rgba(255,255,255,0.08)",
-                        transform: isJust ? "scale(1.14)" : "scale(1)",
+                        transform: isJust ? "scale(1.12)" : "scale(1)",
                         boxShadow: isJust
                           ? `0 0 22px ${LETTER_COLORS[letterCol]}99`
                           : isWinLine
@@ -358,20 +364,24 @@ if (bingo.winner) {
                       }}
                     >
                       <span style={{
-                        ...s.cellNum,
-                        color: isWinLine
-                          ? "#34d399"
-                          : isMarked
-                            ? "#c084fc"
-                            : "rgba(255,255,255,0.75)",
+                        fontSize: isMarked ? (isMobile ? "15px" : "17px") : (isMobile ? "14px" : "16px"),
                         fontWeight: isMarked ? "800" : "500",
-                        fontSize: isMarked ? "17px" : "16px",
+                        color: isWinLine ? "#34d399" : isMarked ? "#c084fc" : "rgba(255,255,255,0.75)",
+                        position: "relative",
+                        zIndex: 1,
+                        transition: "color 0.2s ease, font-size 0.2s ease",
                       }}>
                         {cell}
                       </span>
                       {isMarked && (
                         <div style={{
-                          ...s.daub,
+                          position: "absolute",
+                          width: "6px",
+                          height: "6px",
+                          borderRadius: "50%",
+                          bottom: "4px",
+                          right: "4px",
+                          opacity: 0.8,
                           background: isWinLine ? "#34d399" : "#a855f7",
                         }} />
                       )}
@@ -382,10 +392,8 @@ if (bingo.winner) {
             </div>
 
             {/* Progress */}
-            <div style={s.progressBar}>
-              <div style={s.progressText}>
-                {totalLines} / 5 lines completed
-              </div>
+            <div style={{ marginTop: "2px" }}>
+              <div style={s.progressText}>{totalLines} / 5 lines completed</div>
               <div style={s.progressTrack}>
                 <div style={{
                   ...s.progressFill,
@@ -411,21 +419,23 @@ if (bingo.winner) {
           </div>
 
           {/* ── RIGHT: Caller panel ── */}
-          <div style={s.callerSection}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
 
             {/* Last called display */}
             <div style={s.callerBox}>
               <div style={s.callerLabel}>LAST CALLED</div>
               {lastNum ? (
-                <div style={s.callerDisplay} key={lastNum}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "6px", lineHeight: 1 }} key={lastNum}>
                   <span style={{
-                    ...s.callerLetter,
+                    fontSize: isMobile ? "32px" : "44px",
+                    fontWeight: "900",
                     color: callerLetter ? LETTER_COLORS[BINGO_LETTERS.indexOf(callerLetter)] : "#fff",
                   }}>
                     {callerLetter}
                   </span>
                   <span style={{
-                    ...s.callerNumber,
+                    fontSize: isMobile ? "56px" : "76px",
+                    fontWeight: "900",
                     color: callerLetter ? LETTER_COLORS[BINGO_LETTERS.indexOf(callerLetter)] : "#fff",
                     animation: "popIn 0.4s ease both",
                   }}>
@@ -433,7 +443,7 @@ if (bingo.winner) {
                   </span>
                 </div>
               ) : (
-                <div style={s.callerEmpty}>–</div>
+                <div style={{ fontSize: isMobile ? "56px" : "76px", fontWeight: "900", color: "rgba(255,255,255,0.1)" }}>–</div>
               )}
               {lastCaller && (
                 <div style={s.callerBy}>
@@ -445,22 +455,21 @@ if (bingo.winner) {
               <div style={s.calledCount}>{calledNumbers.length} / 25 called</div>
             </div>
 
-            {/* Number input — any player can call */}
+            {/* Number input */}
             {!winner && (
               <div style={s.inputBox}>
                 <div style={s.inputLabel}>CALL A NUMBER</div>
-                <div style={s.inputRow}>
+                <div style={{ display: "flex", gap: "10px" }}>
                   <input
                     ref={inputRef}
                     className="num-input"
                     type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     min={1}
                     max={25}
                     value={inputNum}
-                    onChange={(e) => {
-                      setInputNum(e.target.value);
-                      setInputError("");
-                    }}
+                    onChange={(e) => { setInputNum(e.target.value); setInputError(""); }}
                     onKeyDown={handleKeyDown}
                     placeholder="1–25"
                     style={s.numInput}
@@ -475,12 +484,8 @@ if (bingo.winner) {
                     Call!
                   </button>
                 </div>
-                {inputError && (
-                  <div style={s.errorMsg}>{inputError}</div>
-                )}
-                <div style={s.hintText}>
-                  Any player can call any uncalled number (1–25)
-                </div>
+                {inputError && <div style={s.errorMsg}>{inputError}</div>}
+                <div style={s.hintText}>Any player can call any uncalled number (1–25)</div>
               </div>
             )}
 
@@ -495,15 +500,17 @@ if (bingo.winner) {
                     <div
                       key={n}
                       style={{
-                        ...s.calledNum,
-                        background: isCalled
-                          ? `${LETTER_COLORS[li]}22`
-                          : "rgba(255,255,255,0.03)",
-                        border: isCalled
-                          ? `1.5px solid ${LETTER_COLORS[li]}88`
-                          : "1px solid rgba(255,255,255,0.06)",
-                        color: isCalled ? LETTER_COLORS[li] : "rgba(255,255,255,0.2)",
+                        height: isMobile ? "30px" : "34px",
+                        borderRadius: "8px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: isMobile ? "12px" : "13px",
                         fontWeight: isCalled ? "700" : "400",
+                        background: isCalled ? `${LETTER_COLORS[li]}22` : "rgba(255,255,255,0.03)",
+                        border: isCalled ? `1.5px solid ${LETTER_COLORS[li]}88` : "1px solid rgba(255,255,255,0.06)",
+                        color: isCalled ? LETTER_COLORS[li] : "rgba(255,255,255,0.2)",
+                        transition: "all 0.25s ease",
                         animation: n === justCalled ? "popIn 0.35s ease both" : "none",
                       }}
                     >
@@ -514,13 +521,11 @@ if (bingo.winner) {
               </div>
 
               {/* BINGO legend */}
-              <div style={s.legend}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px" }}>
                 {BINGO_LETTERS.map((l, i) => (
-                  <div key={l} style={s.legendItem}>
+                  <div key={l} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1px", fontSize: "13px" }}>
                     <span style={{ color: LETTER_COLORS[i], fontWeight: "800" }}>{l}</span>
-                    <span style={{ color: "rgba(255,255,255,0.35)", fontSize: "11px" }}>
-                      {i * 5 + 1}–{i * 5 + 5}
-                    </span>
+                    <span style={{ color: "rgba(255,255,255,0.35)", fontSize: "10px" }}>{i * 5 + 1}–{i * 5 + 5}</span>
                   </div>
                 ))}
               </div>
@@ -533,25 +538,17 @@ if (bingo.winner) {
   );
 }
 
-// ─── styles ───────────────────────────────────────────────────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = {
-  backBtn: {
-  background: "rgba(255,255,255,0.06)",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: "999px",
-  padding: "8px 16px",
-  color: "rgba(255,255,255,0.65)",
-  fontSize: "13px",
-  fontWeight: "700",
-  cursor: "pointer",
-},
   page: {
     minHeight: "100vh",
     background: "linear-gradient(160deg, #0d0d1a 0%, #1a0f2e 50%, #0d1a2e 100%)",
     fontFamily: "'Segoe UI', system-ui, sans-serif",
-    padding: "20px 16px 48px",
+    padding: "14px 12px 48px",
     color: "#fff",
+    overflowX: "hidden",
+    boxSizing: "border-box",
   },
   inner: { maxWidth: "980px", margin: "0 auto" },
 
@@ -569,13 +566,15 @@ const s = {
   },
   loadingText: { color: "rgba(255,255,255,0.4)", fontSize: "14px" },
 
-  topBar: {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  flexWrap: isMobile ? "wrap" : "nowrap",
-  gap: isMobile ? "10px" : "0",
-  marginBottom: "24px",
+  backBtn: {
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: "999px",
+    padding: "8px 16px",
+    color: "rgba(255,255,255,0.65)",
+    fontSize: "13px",
+    fontWeight: "700",
+    cursor: "pointer",
   },
   roomPill: {
     background: "rgba(255,255,255,0.06)",
@@ -589,16 +588,16 @@ const s = {
     width: "32px", height: "32px", borderRadius: "50%",
     background: "rgba(255,255,255,0.1)", color: "#fff",
     display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: "13px", fontWeight: "700",
+    fontSize: "13px", fontWeight: "700", flexShrink: 0,
   },
 
   winnerBanner: {
     background: "linear-gradient(135deg, rgba(168,85,247,0.2), rgba(99,102,241,0.2))",
     border: "1px solid rgba(168,85,247,0.5)",
-    borderRadius: "20px", padding: "22px 28px",
-    marginBottom: "24px",
+    borderRadius: "20px", padding: "16px 20px",
+    marginBottom: "16px",
     display: "flex", alignItems: "center",
-    justifyContent: "center", gap: "20px", flexWrap: "wrap",
+    justifyContent: "center", gap: "16px", flexWrap: "wrap",
   },
   winnerTitle: {
     fontSize: "32px", fontWeight: "900",
@@ -615,16 +614,6 @@ const s = {
     fontSize: "13px", fontWeight: "700", cursor: "pointer",
   },
 
-  layout: {
-  display: "grid",
-  gridTemplateColumns: isMobile ? "1fr" : "auto 1fr",
-  gap: isMobile ? "18px" : "28px",
-  alignItems: "start",
-},
-  },
-
-  // ── Card ──
-  cardSection: { display: "flex", flexDirection: "column", gap: "10px" },
   cardTopRow: {
     display: "flex", alignItems: "center",
     justifyContent: "space-between", marginBottom: "2px",
@@ -639,36 +628,12 @@ const s = {
     color: "#c084fc", borderRadius: "999px",
     padding: "3px 12px", fontSize: "12px", fontWeight: "600",
   },
-  bingoHeader: {
-  display: "grid",
-  gridTemplateColumns: `repeat(5, ${isMobile ? "48px" : "62px"})`,
-  gap: "4px",
-},
   headerCell: {
     height: "36px", borderRadius: "10px",
     display: "flex", alignItems: "center", justifyContent: "center",
     fontSize: "18px", fontWeight: "900", letterSpacing: "1px",
     background: "rgba(255,255,255,0.06)",
   },
-  grid: {
-  display: "grid",
-  gridTemplateColumns: `repeat(5, ${isMobile ? "48px" : "62px"})`,
-  gridTemplateRows: `repeat(5, ${isMobile ? "48px" : "62px"})`,
-  },
-  cell: {
-    borderRadius: "12px",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    position: "relative", overflow: "hidden", cursor: "default",
-  },
-  cellNum: {
-    fontSize: "16px", position: "relative", zIndex: 1,
-    transition: "color 0.2s ease, font-weight 0.2s ease, font-size 0.2s ease",
-  },
-  daub: {
-    position: "absolute", width: "6px", height: "6px",
-    borderRadius: "50%", bottom: "5px", right: "5px", opacity: 0.8,
-  },
-  progressBar: { marginTop: "2px" },
   progressText: {
     color: "rgba(255,255,255,0.45)", fontSize: "12px",
     fontWeight: "600", marginBottom: "5px", textAlign: "center",
@@ -689,29 +654,16 @@ const s = {
     transition: "transform 0.15s ease, filter 0.15s ease",
   },
 
-  // ── Caller ──
-  callerSection: {
-    display: "flex", flexDirection: "column", gap: "16px",
-  },
   callerBox: {
     background: "rgba(255,255,255,0.04)",
     border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: "20px", padding: "20px 24px",
+    borderRadius: "20px", padding: "16px 20px",
     display: "flex", flexDirection: "column",
     alignItems: "center", gap: "4px",
   },
   callerLabel: {
     color: "rgba(255,255,255,0.35)", fontSize: "11px",
     fontWeight: "700", letterSpacing: "2px",
-  },
-  callerDisplay: {
-    display: "flex", alignItems: "baseline", gap: "6px", lineHeight: 1,
-  },
-  callerLetter: { fontSize: "44px", fontWeight: "900" },
-  callerNumber: { fontSize: "76px", fontWeight: "900" },
-  callerEmpty: {
-    fontSize: "76px", fontWeight: "900",
-    color: "rgba(255,255,255,0.1)",
   },
   callerBy: {
     color: "rgba(255,255,255,0.35)", fontSize: "12px", marginTop: "2px",
@@ -724,14 +676,13 @@ const s = {
   inputBox: {
     background: "rgba(255,255,255,0.04)",
     border: "1px solid rgba(255,255,255,0.09)",
-    borderRadius: "18px", padding: "18px 20px",
+    borderRadius: "18px", padding: "16px 18px",
     display: "flex", flexDirection: "column", gap: "10px",
   },
   inputLabel: {
     color: "rgba(255,255,255,0.35)", fontSize: "11px",
     fontWeight: "700", letterSpacing: "2px",
   },
-  inputRow: { display: "flex", gap: "10px" },
   numInput: {
     flex: 1, background: "rgba(255,255,255,0.06)",
     border: "1.5px solid rgba(255,255,255,0.12)",
@@ -739,7 +690,6 @@ const s = {
     fontSize: "20px", fontWeight: "700", textAlign: "center",
     padding: "10px", outline: "none",
     transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-    MozAppearance: "textfield",
   },
   callBtn: {
     background: "linear-gradient(135deg,#a855f7,#6366f1)",
@@ -759,28 +709,15 @@ const s = {
   calledSection: {
     background: "rgba(255,255,255,0.03)",
     border: "1px solid rgba(255,255,255,0.07)",
-    borderRadius: "18px", padding: "16px 18px",
+    borderRadius: "18px", padding: "14px 16px",
   },
   calledTitle: {
     color: "rgba(255,255,255,0.3)", fontSize: "10px",
     fontWeight: "700", letterSpacing: "2px",
-    textTransform: "uppercase", marginBottom: "12px",
+    textTransform: "uppercase", marginBottom: "10px",
   },
   calledGrid: {
     display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "5px",
-    marginBottom: "12px",
-  },
-  calledNum: {
-    height: "34px", borderRadius: "8px",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: "13px", transition: "all 0.25s ease",
-  },
-  legend: {
-    display: "flex", justifyContent: "space-between", marginTop: "4px",
-  },
-  legendItem: {
-    display: "flex", flexDirection: "column",
-    alignItems: "center", gap: "1px",
-    fontSize: "13px",
+    marginBottom: "8px",
   },
 };
