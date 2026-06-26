@@ -256,7 +256,7 @@ export default function SketchAndGuess() {
     return (
       <div style={s.center}>
         <div style={{ fontSize: "48px", marginBottom: "12px" }}>🎨</div>
-        <p style={{ color: "#fff", fontSize: "18px", fontWeight: 700, marginBottom: "8px" }}>
+        <p style={{ color: "#fff", fontSize: "18px", fontWeight: 700, marginBottom: "8px", textAlign: "center", padding: "0 20px" }}>
           Need at least {MIN_PLAYERS} players to start
         </p>
         <p style={{ color: "rgba(255,255,255,0.5)" }}>
@@ -274,160 +274,202 @@ export default function SketchAndGuess() {
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes popIn { from{opacity:0; transform:scale(0.9)} to{opacity:1; transform:scale(1)} }
+
+        .sg-game-grid {
+          display: grid;
+          grid-template-columns: 1fr 280px;
+          gap: 16px;
+        }
+        .sg-chat-col { min-height: 300px; }
+        .sg-top-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-bottom: 20px;
+        }
+        .sg-word-btn {
+          padding: 18px 28px;
+          font-size: 18px;
+        }
+        .sg-pick-title { font-size: 26px; }
+        .sg-big-emoji { font-size: 56px; }
+        .sg-container { max-width: 920px; margin: 0 auto; }
+        .sg-page { padding: 20px 16px 40px; }
+
+        @media (max-width: 720px) {
+          .sg-game-grid {
+            grid-template-columns: 1fr;
+          }
+          .sg-chat-col { min-height: 240px; }
+        }
+
+        @media (max-width: 480px) {
+          .sg-page { padding: 14px 10px 28px; }
+          .sg-top-bar { gap: 8px; margin-bottom: 14px; }
+          .sg-top-bar > * { font-size: 12px !important; padding: 6px 12px !important; }
+          .sg-word-btn { padding: 14px 18px !important; font-size: 16px !important; }
+          .sg-pick-title { font-size: 21px !important; }
+          .sg-big-emoji { font-size: 40px !important; margin-bottom: 10px !important; }
+          .sg-word-mask { font-size: 18px !important; letter-spacing: 4px !important; }
+          .sg-score-row { padding: 10px 12px !important; }
+          .sg-next-btn { width: 100%; padding: 14px 0 !important; font-size: 15px !important; }
+        }
       `}</style>
 
-      <div style={s.container}>
+      <div className="sg-page" style={s.page}>
+        <div className="sg-container" style={s.container}>
 
-        {/* Top bar */}
-        <div style={s.topBar}>
-        <button style={s.backBtn} onClick={goToGames}>
-
-← Games
-
-</button>
-          <div style={s.roundBadge}>
-            🎨 Round {game.round} / {game.order.length}
-          </div>
-          {game.phase === "drawing" && (
-            <div style={{
-              ...s.timer,
-              color: timeLeft <= 10 ? "#f87171" : "#fff",
-            }}>
-              ⏱ {timeLeft}s
+          {/* Top bar */}
+          <div className="sg-top-bar" style={s.topBar}>
+            <button style={s.backBtn} onClick={goToGames}>
+              ← Games
+            </button>
+            <div style={s.roundBadge}>
+              🎨 Round {game.round} / {game.order.length}
             </div>
-          )}
-          <div style={s.drawerBadge}>
-            ✏️ {currentDrawer} is drawing
-          </div>
-        </div>
-
-        {/* ── PICKING PHASE ── */}
-        {game.phase === "picking" && (
-          <div style={s.pickWrap}>
-            {isDrawer ? (
-              <>
-                <h2 style={s.pickTitle}>Pick a word to draw</h2>
-                <p style={s.pickSub}>Auto-picking in {pickTimeLeft}s…</p>
-                {wordChoices.length > 0 ? (
-                  <div style={s.wordChoices}>
-                    {wordChoices.map((w) => (
-                      <button key={w} style={s.wordBtn} onClick={() => chooseWord(w)}>
-                        {w}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={s.pickSub}>Loading word choices…</p>
-                )}
-              </>
-            ) : (
-              <div style={s.waitingPick}>
-                <div style={s.bigEmoji}>✏️</div>
-                <h2 style={s.pickTitle}>{currentDrawer} is picking a word…</h2>
-                <p style={s.pickSub}>Get ready to guess!</p>
+            {game.phase === "drawing" && (
+              <div style={{
+                ...s.timer,
+                color: timeLeft <= 10 ? "#f87171" : "#fff",
+              }}>
+                ⏱ {timeLeft}s
               </div>
             )}
+            <div style={s.drawerBadge}>
+              ✏️ {currentDrawer} is drawing
+            </div>
           </div>
-        )}
 
-        {/* ── DRAWING PHASE ── */}
-        {game.phase === "drawing" && (
-          <div style={s.gameGrid}>
-            <div style={s.canvasCol}>
-              <DrawingCanvas
-                roomId={roomId}
-                isDrawer={isDrawer}
-                currentWord={game.currentWord}
-              />
-              {!isDrawer && (
-                <div style={s.wordMask}>
-                  Word: {game.currentWord.split("").map((c, i) =>
-                    c === " " ? "  " : "_ "
+          {/* ── PICKING PHASE ── */}
+          {game.phase === "picking" && (
+            <div style={s.pickWrap}>
+              {isDrawer ? (
+                <>
+                  <h2 className="sg-pick-title" style={s.pickTitle}>Pick a word to draw</h2>
+                  <p style={s.pickSub}>Auto-picking in {pickTimeLeft}s…</p>
+                  {wordChoices.length > 0 ? (
+                    <div style={s.wordChoices}>
+                      {wordChoices.map((w) => (
+                        <button key={w} className="sg-word-btn" style={s.wordBtn} onClick={() => chooseWord(w)}>
+                          {w}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={s.pickSub}>Loading word choices…</p>
                   )}
-                  <span style={s.wordLenHint}>({game.currentWord.length} letters)</span>
+                </>
+              ) : (
+                <div style={s.waitingPick}>
+                  <div className="sg-big-emoji" style={s.bigEmoji}>✏️</div>
+                  <h2 className="sg-pick-title" style={s.pickTitle}>{currentDrawer} is picking a word…</h2>
+                  <p style={s.pickSub}>Get ready to guess!</p>
                 </div>
               )}
             </div>
-            <div style={s.chatCol}>
-              <GuessChat
-                roomId={roomId}
-                isDrawer={isDrawer}
-                currentWord={game.currentWord}
-                nickname={nickname}
-                onCorrectGuess={handleCorrectGuess}
-              />
+          )}
+
+          {/* ── DRAWING PHASE ── */}
+          {game.phase === "drawing" && (
+            <div className="sg-game-grid">
+              <div style={s.canvasCol}>
+                <DrawingCanvas
+                  roomId={roomId}
+                  isDrawer={isDrawer}
+                  currentWord={game.currentWord}
+                />
+                {!isDrawer && (
+                  <div className="sg-word-mask" style={s.wordMask}>
+                    Word: {game.currentWord.split("").map((c) =>
+                      c === " " ? "  " : "_ "
+                    )}
+                    <span style={s.wordLenHint}>({game.currentWord.length} letters)</span>
+                  </div>
+                )}
+              </div>
+              <div className="sg-chat-col" style={s.chatCol}>
+                <GuessChat
+                  roomId={roomId}
+                  isDrawer={isDrawer}
+                  currentWord={game.currentWord}
+                  nickname={nickname}
+                  onCorrectGuess={handleCorrectGuess}
+                />
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ── RESULTS PHASE ── */}
-        {game.phase === "results" && (
-          <div style={s.resultsWrap}>
-            <div style={s.bigEmoji}>{game.lastWinner ? "🎉" : "⏰"}</div>
-            <h2 style={s.pickTitle}>
-              {game.lastWinner
-                ? `${game.lastWinner} guessed it!`
-                : "Time's up!"}
-            </h2>
-            <p style={s.pickSub}>
-              The word was <strong style={{ color: "#a855f7" }}>{game.currentWord}</strong>
-            </p>
+          {/* ── RESULTS PHASE ── */}
+          {game.phase === "results" && (
+            <div style={s.resultsWrap}>
+              <div className="sg-big-emoji" style={s.bigEmoji}>{game.lastWinner ? "🎉" : "⏰"}</div>
+              <h2 className="sg-pick-title" style={s.pickTitle}>
+                {game.lastWinner
+                  ? `${game.lastWinner} guessed it!`
+                  : "Time's up!"}
+              </h2>
+              <p style={s.pickSub}>
+                The word was <strong style={{ color: "#a855f7" }}>{game.currentWord}</strong>
+              </p>
 
-            <div style={s.scoreboard}>
-              {sortedScores.map(([name, score], i) => (
-                <div key={name} style={s.scoreRow}>
-                  <span style={s.scoreRank}>#{i + 1}</span>
-                  <span style={s.scoreName}>{name}</span>
-                  <span style={s.scorePoints}>{score} pts</span>
-                </div>
-              ))}
+              <div style={s.scoreboard}>
+                {sortedScores.map(([name, score], i) => (
+                  <div key={name} className="sg-score-row" style={s.scoreRow}>
+                    <span style={s.scoreRank}>#{i + 1}</span>
+                    <span style={s.scoreName}>{name}</span>
+                    <span style={s.scorePoints}>{score} pts</span>
+                  </div>
+                ))}
+              </div>
+
+              {isHost && (
+                <button className="sg-next-btn" style={s.nextBtn} onClick={nextRound}>
+                  {game.currentDrawerIndex + 1 >= game.order.length
+                    ? "🏆 See Final Results"
+                    : "Next Round →"}
+                </button>
+              )}
+              {!isHost && (
+                <p style={s.waitHostNote}>Waiting for host to continue…</p>
+              )}
             </div>
+          )}
 
-            {isHost && (
-              <button style={s.nextBtn} onClick={nextRound}>
-                {game.currentDrawerIndex + 1 >= game.order.length
-                  ? "🏆 See Final Results"
-                  : "Next Round →"}
-              </button>
-            )}
-            {!isHost && (
-              <p style={s.waitHostNote}>Waiting for host to continue…</p>
-            )}
-          </div>
-        )}
+          {/* ── FINISHED PHASE ── */}
+          {game.phase === "finished" && (
+            <div style={s.resultsWrap}>
+              <div className="sg-big-emoji" style={s.bigEmoji}>🏆</div>
+              <h2 className="sg-pick-title" style={s.pickTitle}>Game Over!</h2>
+              <p style={s.pickSub}>
+                <strong style={{ color: "#facc15" }}>{sortedScores[0]?.[0]}</strong> wins with {sortedScores[0]?.[1]} points!
+              </p>
 
-        {/* ── FINISHED PHASE ── */}
-        {game.phase === "finished" && (
-          <div style={s.resultsWrap}>
-            <div style={s.bigEmoji}>🏆</div>
-            <h2 style={s.pickTitle}>Game Over!</h2>
-            <p style={s.pickSub}>
-              <strong style={{ color: "#facc15" }}>{sortedScores[0]?.[0]}</strong> wins with {sortedScores[0]?.[1]} points!
-            </p>
+              <div style={s.scoreboard}>
+                {sortedScores.map(([name, score], i) => (
+                  <div key={name} className="sg-score-row" style={{
+                    ...s.scoreRow,
+                    ...(i === 0 ? s.scoreRowWinner : {}),
+                  }}>
+                    <span style={s.scoreRank}>{i === 0 ? "👑" : `#${i + 1}`}</span>
+                    <span style={s.scoreName}>{name}</span>
+                    <span style={s.scorePoints}>{score} pts</span>
+                  </div>
+                ))}
+              </div>
 
-            <div style={s.scoreboard}>
-              {sortedScores.map(([name, score], i) => (
-                <div key={name} style={{
-                  ...s.scoreRow,
-                  ...(i === 0 ? s.scoreRowWinner : {}),
-                }}>
-                  <span style={s.scoreRank}>{i === 0 ? "👑" : `#${i + 1}`}</span>
-                  <span style={s.scoreName}>{name}</span>
-                  <span style={s.scorePoints}>{score} pts</span>
-                </div>
-              ))}
+              {isHost ? (
+                <button className="sg-next-btn" style={s.nextBtn} onClick={backToLobby}>
+                  Back to Lobby
+                </button>
+              ) : (
+                <p style={s.waitHostNote}>Waiting for host…</p>
+              )}
             </div>
+          )}
 
-            {isHost ? (
-              <button style={s.nextBtn} onClick={backToLobby}>
-                Back to Lobby
-              </button>
-            ) : (
-              <p style={s.waitHostNote}>Waiting for host…</p>
-            )}
-          </div>
-        )}
-
+        </div>
       </div>
     </div>
   );
@@ -435,22 +477,21 @@ export default function SketchAndGuess() {
 
 const s = {
   backBtn: {
-  background: "rgba(255,255,255,0.06)",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: "999px",
-  padding: "8px 16px",
-  color: "rgba(255,255,255,0.65)",
-  fontSize: "13px",
-  fontWeight: "700",
-  cursor: "pointer",
-},
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: "999px",
+    padding: "8px 16px",
+    color: "rgba(255,255,255,0.65)",
+    fontSize: "13px",
+    fontWeight: "700",
+    cursor: "pointer",
+  },
   page: {
     minHeight: "100vh",
     background: "linear-gradient(160deg, #0d0d1a 0%, #1a0f2e 50%, #0d1a2e 100%)",
     fontFamily: "'Segoe UI', system-ui, sans-serif",
-    padding: "20px 16px 40px",
   },
-  container: { maxWidth: "920px", margin: "0 auto" },
+  container: {},
   center: {
     minHeight: "100vh",
     display: "flex",
@@ -458,6 +499,8 @@ const s = {
     alignItems: "center",
     justifyContent: "center",
     background: "linear-gradient(160deg, #0d0d1a 0%, #1a0f2e 50%, #0d1a2e 100%)",
+    padding: "0 16px",
+    textAlign: "center",
   },
   spinner: {
     width: "40px", height: "40px",
@@ -466,14 +509,7 @@ const s = {
     borderRadius: "50%",
     animation: "spin 0.8s linear infinite",
   },
-  topBar: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: "10px",
-    marginBottom: "20px",
-  },
+  topBar: {},
   roundBadge: {
     background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.1)",
@@ -482,6 +518,7 @@ const s = {
     color: "rgba(255,255,255,0.7)",
     fontSize: "13px",
     fontWeight: "700",
+    whiteSpace: "nowrap",
   },
   timer: {
     fontSize: "20px",
@@ -490,6 +527,7 @@ const s = {
     padding: "6px 18px",
     borderRadius: "999px",
     border: "1px solid rgba(255,255,255,0.1)",
+    whiteSpace: "nowrap",
   },
   drawerBadge: {
     background: "rgba(168,85,247,0.15)",
@@ -499,14 +537,10 @@ const s = {
     padding: "8px 16px",
     fontSize: "13px",
     fontWeight: "700",
+    whiteSpace: "nowrap",
   },
-  gameGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 280px",
-    gap: "16px",
-  },
-  canvasCol: { display: "flex", flexDirection: "column", gap: "10px" },
-  chatCol: { minHeight: "300px" },
+  canvasCol: { display: "flex", flexDirection: "column", gap: "10px", minWidth: 0 },
+  chatCol: {},
   wordMask: {
     textAlign: "center",
     color: "#fff",
@@ -514,6 +548,7 @@ const s = {
     letterSpacing: "6px",
     fontWeight: "700",
     fontFamily: "monospace",
+    wordBreak: "break-word",
   },
   wordLenHint: {
     display: "block",
